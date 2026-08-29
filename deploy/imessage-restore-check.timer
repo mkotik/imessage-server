@@ -1,0 +1,12 @@
+[Unit]
+Description=Weekly iMessage archive restore drill
+Documentation=https://github.com/mkotik/imessage-server
+
+[Timer]
+OnCalendar=Sun *-*-* 05:30:00
+RandomizedDelaySec=1800
+Persistent=true
+Unit=imessage-restore-check.service
+
+[Install]
+WantedBy=timers.target
