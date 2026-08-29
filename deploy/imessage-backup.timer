@@ -1,0 +1,17 @@
+# Nightly encrypted backup.
+#
+# Persistent=true so a backup missed while the machine was down runs at the next
+# boot rather than being skipped silently.
+
+[Unit]
+Description=Nightly iMessage archive backup
+Documentation=https://github.com/mkotik/imessage-server
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+RandomizedDelaySec=900
+Persistent=true
+Unit=imessage-backup.service
+
+[Install]
+WantedBy=timers.target
