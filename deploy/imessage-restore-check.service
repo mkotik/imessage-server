@@ -1,0 +1,42 @@
+# Weekly restore drill.
+#
+# Downloads the newest backup, decrypts it, opens it with the database key and
+# runs integrity_check, then deletes the copy. A backup nobody has restored is a
+# hypothesis, not a backup — this turns it into a fact, weekly.
+
+[Unit]
+Description=iMessage archive restore verification drill
+Documentation=https://github.com/mkotik/imessage-server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=imsg
+Group=imsg
+WorkingDirectory=/opt/imessage-server
+EnvironmentFile=/etc/imessage-server/secrets.env
+Environment=NODE_ENV=production
+Environment=IMSG_DB_PATH=/var/lib/imessage/messages.db
+Environment=IMSG_TMP_DIR=/var/lib/imessage/tmp
+
+ExecStart=/usr/bin/node /opt/imessage-server/dist/src/tools/restore.js --latest --verify-only
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/imessage
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete
+UMask=0077
+MemoryMax=384M
