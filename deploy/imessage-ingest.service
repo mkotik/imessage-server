@@ -1,0 +1,79 @@
+# Ingestion endpoint for the Mac iMessage sender.
+#
+# Bound to 127.0.0.1:3100. Published externally only through Cloudflare Tunnel
+# at imessage-ingest.deangoldsteen.com, behind a Cloudflare Access service-token
+# policy. No inbound port is opened on the host.
+#
+# Install:
+#   sudo cp deploy/imessage-ingest.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now imessage-ingest
+
+[Unit]
+Description=iMessage archive ingestion service
+Documentation=https://github.com/mkotik/imessage-server
+After=network-online.target
+Wants=network-online.target
+# Give up restarting only if it is crash-looping, so a bad deploy stays visible
+# instead of being masked by an endless restart cycle.
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=imsg
+Group=imsg
+WorkingDirectory=/opt/imessage-server
+
+# Secrets (DB key, attachment master key, ingest token, E2 credentials) are read
+# by systemd as root from a 0640 root:imsg file and handed to the process as
+# environment variables. The service itself never has permission to read
+# /etc/imessage-server.
+EnvironmentFile=/etc/imessage-server/secrets.env
+
+Environment=NODE_ENV=production
+Environment=IMSG_INGEST_HOST=127.0.0.1
+Environment=IMSG_INGEST_PORT=3100
+Environment=IMSG_INGEST_PUBLIC_HOSTNAME=imessage-ingest.deangoldsteen.com
+Environment=IMSG_DB_PATH=/var/lib/imessage/messages.db
+Environment=IMSG_TMP_DIR=/var/lib/imessage/tmp
+Environment=IMSG_LOG_LEVEL=info
+Environment=CF_ACCESS_TEAM_DOMAIN=https://mkotik.cloudflareaccess.com
+# Access application audience tag. Not a secret — it is a public identifier that
+# scopes JWT validation to this application only.
+Environment=IMSG_INGEST_CF_ACCESS_CLIENT_ID=225f4e03ed7f11b7dc5db5cacae985f1.access
+Environment=IMSG_INGEST_CF_ACCESS_AUD=7fa317042948e7f5f7f1e19fd695a5ce726e7361a5d274993f07aec204ef7f3b
+
+ExecStart=/usr/bin/node /opt/imessage-server/dist/src/ingest/server.js
+Restart=on-failure
+RestartSec=5
+# --- hardening: what this process is forbidden from doing -------------------
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/imessage
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete
+UMask=0077
+
+# Hard ceiling on a 1-core, swapless box. Attachments stream, so this is ample.
+MemoryMax=512M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target
