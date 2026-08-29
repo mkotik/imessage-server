@@ -1,0 +1,47 @@
+# One-shot encrypted backup of the message archive to iDrive E2.
+#
+# Triggered by imessage-backup.timer. Runs as the same service user so it can
+# read the database, and receives the same secrets.
+
+[Unit]
+Description=iMessage archive encrypted backup to iDrive E2
+Documentation=https://github.com/mkotik/imessage-server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=imsg
+Group=imsg
+WorkingDirectory=/opt/imessage-server
+EnvironmentFile=/etc/imessage-server/secrets.env
+Environment=NODE_ENV=production
+Environment=IMSG_DB_PATH=/var/lib/imessage/messages.db
+Environment=IMSG_TMP_DIR=/var/lib/imessage/tmp
+
+ExecStart=/usr/bin/node /opt/imessage-server/dist/src/tools/backup.js
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/imessage
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete
+UMask=0077
+MemoryMax=384M
+TasksMax=64
