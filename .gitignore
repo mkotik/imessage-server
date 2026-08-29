@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.log
+
+# Never commit secrets or data.
+.env
+.env.local
+secrets.env
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.enc
+data/
+tmp/
