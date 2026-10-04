@@ -38,23 +38,30 @@ is limited to `Authentication succeeded` / `Authentication rejected: missing tok
 
 ## Deploy a change
 
-```bash
-# locally
-npx tsc --noEmit                       # must be clean before anything else
-tar czf /tmp/imsg-src.tgz --exclude=node_modules --exclude=dist --exclude='*.tgz' .
-scp -i <key> /tmp/imsg-src.tgz ubuntu@<vps>:/tmp/
+**Push to `main`; the host deploys it within ~3 minutes.** `auto-deploy@imessage-server.timer`
+fetches over a read-only deploy key, then as the unprivileged `deploy` user runs
+`npm ci --ignore-scripts`, `npm run build` and the full test suite
+(`node --test --test-concurrency=1 'dist/test/*.test.js'`) in a scratch directory. Only if all
+of that passes does it rsync the build into `/opt/imessage-server` (`root:root`), restart
+`imessage-ingest` then `imessage-mcp`, and check `/health` on both. Any failure rolls back to
+the previous code and the commit is not retried until a newer one lands.
+The pipeline itself is documented in `mkotik/personal-mcp` → `docs/CONVENTIONS.md` → *Deployment*.
 
-# on the VPS
-cd /opt/imessage-server
-sudo rm -rf dist src test deploy
-sudo tar xzf /tmp/imsg-src.tgz
-sudo chown -R root:root .
-sudo npm run build
-node --test --test-concurrency=1 'dist/test/*.test.js'
-sudo systemctl restart imessage-ingest imessage-mcp
+```bash
+journalctl -u auto-deploy@imessage-server -n 40 --no-pager   # last deploys / failures
+sudo cat /var/lib/auto-deploy/imessage-server.deployed       # live commit
+sudo FORCE=1 /usr/local/sbin/auto-deploy imessage-server     # deploy now / retry
 ```
 
-If unit files changed: `sudo cp deploy/*.service deploy/*.timer /etc/systemd/system/ && sudo systemctl daemon-reload`.
+- **Unit files are not installed automatically** (they run as root). A changed unit is logged as
+  `NOTE: deploy/<unit> differs from the installed unit`; install it by hand:
+  `sudo cp deploy/*.service deploy/*.timer /etc/systemd/system/ && sudo systemctl daemon-reload`.
+- **Rollback restores code, not the schema.** `imessage-ingest` applies pending migrations on
+  start, so a commit that adds one keeps it even if the deploy is rolled back. Keep migrations
+  backward compatible with the previous release.
+- `--ignore-scripts` is deliberate: the SQLite driver ships `prebuilds/linux-arm64.node`, but its
+  `binding.gyp` makes npm try to compile it, and the box has no toolchain (see below). The test
+  suite confirms the prebuilt binary loads before anything goes live.
 
 > **Lockfile trap.** A `package-lock.json` generated on x86 pins arch-specific
 > resolution and suppresses the arm64 prebuild, so `npm install` on this VPS
