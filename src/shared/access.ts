@@ -80,6 +80,14 @@ export interface AccessConfigInput {
    * Not a secret: the client ID is the public half of the credential pair.
    */
   expectedCommonName?: string | undefined;
+  /**
+   * For principal='user' ONLY: additionally accept service-token assertions
+   * whose `common_name` (client ID) is in this allowlist. Used to let one
+   * specific machine client (e.g. a proxy for Meta's Muse app) reach the MCP
+   * endpoint without an interactive login. Empty or unset means service tokens
+   * stay rejected, exactly as before. Client IDs are public identifiers.
+   */
+  allowedServiceCommonNames?: string[] | undefined;
 }
 
 export interface AccessVerifier {
@@ -159,6 +167,12 @@ export function createAccessVerifier(input: AccessConfigInput): AccessVerifier {
   if (principal === 'user' && expectedCommonName !== undefined) {
     throw new AccessConfigError('expectedCommonName is only meaningful for principal="service"');
   }
+  const allowedServiceCommonNames = new Set(
+    (input.allowedServiceCommonNames ?? []).map((v) => v.trim()).filter((v) => v.length > 0)
+  );
+  if (principal === 'service' && allowedServiceCommonNames.size > 0) {
+    throw new AccessConfigError('allowedServiceCommonNames is only meaningful for principal="user"');
+  }
   const jwksUrl = `${issuer}/cdn-cgi/access/certs`;
 
   // Cloudflare rotates signing keys roughly every 6 weeks (old keys stay valid
@@ -210,6 +224,11 @@ export function createAccessVerifier(input: AccessConfigInput): AccessVerifier {
       // presented to a user-facing application is rejected here even if the
       // Access policy somehow allowed it.
       if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
+        // No subject: only an explicitly allowlisted service token may pass.
+        const cn = payload.common_name;
+        if (typeof cn === 'string' && cn.length > 0 && allowedServiceCommonNames.has(cn)) {
+          return { ok: true };
+        }
         return { ok: false, reason: 'invalid token' };
       }
 
