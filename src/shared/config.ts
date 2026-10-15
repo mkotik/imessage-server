@@ -104,6 +104,8 @@ export interface McpConfig extends CommonConfig {
   cfTeamDomain: string;
   cfAud: string;
   maxInlineAttachmentBytes: number;
+  /** Access service-token client IDs allowed through the MCP origin check (optional). */
+  allowedServiceTokenIds: string[];
 }
 
 function common(env: NodeJS.ProcessEnv): CommonConfig {
@@ -151,6 +153,7 @@ export function loadMcpConfig(env: NodeJS.ProcessEnv = process.env): McpConfig {
     cfTeamDomain: req('CF_ACCESS_TEAM_DOMAIN', env),
     cfAud: req('IMSG_MCP_CF_ACCESS_AUD', env),
     maxInlineAttachmentBytes: int('IMSG_MAX_INLINE_ATTACHMENT_BYTES', env, 5 * 1024 * 1024),
+    allowedServiceTokenIds: (env.IMSG_MCP_ALLOWED_SERVICE_TOKEN_IDS ?? '').split(',').map((v) => v.trim()).filter((v) => v.length > 0),
   };
 }
 
