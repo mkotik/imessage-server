@@ -57,7 +57,7 @@ const log = createLogger('imessage-mcp', cfg.logLevel);
 
 let accessVerifier: AccessVerifier;
 try {
-  accessVerifier = createAccessVerifier({ teamDomain: cfg.cfTeamDomain, aud: cfg.cfAud });
+  accessVerifier = createAccessVerifier({ teamDomain: cfg.cfTeamDomain, aud: cfg.cfAud, allowedServiceCommonNames: cfg.allowedServiceTokenIds });
 } catch (err) {
   if (err instanceof AccessConfigError) {
     log.error('fatal', { reason: 'access configuration invalid', detail: err.message });
