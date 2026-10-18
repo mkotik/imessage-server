@@ -12,7 +12,7 @@ indefinitely, even if it is later deleted from the Mac, iPhone, or iCloud.
 ```
 Mac Messages → imessage-sender → HTTPS → Cloudflare Access
                                               ↓
-                             imessage-ingest.deangoldsteen.com
+                             imessage-ingest.example.com
                                               ↓ (tunnel)
                               ingestion service · 127.0.0.1:3100
                                               ↓
@@ -20,7 +20,7 @@ Mac Messages → imessage-sender → HTTPS → Cloudflare Access
                                               ↓
                                  MCP server · 127.0.0.1:3200
                                               ↓ (tunnel)
-                                  imessage.deangoldsteen.com
+                                  imessage.example.com
                                               ↓
                                     Claude / other MCP clients
 ```
@@ -34,7 +34,7 @@ Cloudflare Tunnel makes outbound connections and is the sole external path.
 
 | | Ingestion | MCP |
 |---|---|---|
-| Hostname | `imessage-ingest.deangoldsteen.com` | `imessage.deangoldsteen.com` |
+| Hostname | `imessage-ingest.example.com` | `imessage.example.com` |
 | Bind | `127.0.0.1:3100` | `127.0.0.1:3200` |
 | Caller | the Mac sender (machine-to-machine) | me, through an AI client |
 | Edge auth | Access **service token** | Access **Managed OAuth**, owner-only |
